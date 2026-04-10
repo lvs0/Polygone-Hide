@@ -1,0 +1,10 @@
+/home/l-vs/.gemini/antigravity/scratch/Polygone-Hide/target/debug/deps/quick_protobuf-ba3604c3cad58800.d: /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/lib.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/errors.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/message.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/reader.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/sizeofs.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/writer.rs
+
+/home/l-vs/.gemini/antigravity/scratch/Polygone-Hide/target/debug/deps/libquick_protobuf-ba3604c3cad58800.rmeta: /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/lib.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/errors.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/message.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/reader.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/sizeofs.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/writer.rs
+
+/home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/lib.rs:
+/home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/errors.rs:
+/home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/message.rs:
+/home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/reader.rs:
+/home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/sizeofs.rs:
+/home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/quick-protobuf-0.8.1/src/writer.rs:

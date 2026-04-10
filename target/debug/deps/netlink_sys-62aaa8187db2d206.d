@@ -1,0 +1,11 @@
+/home/l-vs/.gemini/antigravity/scratch/Polygone-Hide/target/debug/deps/netlink_sys-62aaa8187db2d206.d: /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/lib.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/constants.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/socket.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/addr.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/async_socket.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/async_socket_ext.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/tokio.rs
+
+/home/l-vs/.gemini/antigravity/scratch/Polygone-Hide/target/debug/deps/libnetlink_sys-62aaa8187db2d206.rmeta: /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/lib.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/constants.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/socket.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/addr.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/async_socket.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/async_socket_ext.rs /home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/tokio.rs
+
+/home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/lib.rs:
+/home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/constants.rs:
+/home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/socket.rs:
+/home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/addr.rs:
+/home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/async_socket.rs:
+/home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/async_socket_ext.rs:
+/home/l-vs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.8/src/tokio.rs:
