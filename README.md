@@ -4,6 +4,12 @@
 
 Polygone-Hide is a zero-knowledge networking tunnel that fragments your TCP traffic across the Polygone ephemeral network. Unlike a traditional VPN, your connection is "vaporized" into multiple shards, making metadata analysis nearly impossible.
 
+---
+
+**Project origin · Origine :** French engineering · **[l-vs](https://github.com/lvs0)** · collective **Hope** (*by Hope*). Public focus: **post-quantum** protocols — not hosting economics or free-tier setups.
+
+---
+
 ## 🚀 How it works
 
 1. **Capture**: Accepts local SOCKS5 connections (Browser, SSH, etc.).
@@ -43,4 +49,4 @@ graph LR
 ```
 
 ## ⚖️ License
-MIT License - 2026 Lévy / Polygone Ecosystem.
+MIT License — 2026 · **l-vs** · **Hope** (*by Hope*) · Polygone ecosystem
