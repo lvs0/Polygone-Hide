@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Addr","AddrError","TargetAddr"],"fn":["read_address"],"trait":["ToTargetAddr"]};

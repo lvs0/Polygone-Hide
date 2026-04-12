@@ -1,0 +1,9 @@
+(function() {
+    const implementors = Object.fromEntries([["fast_socks5",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/default/trait.Default.html\" title=\"trait core::default::Default\">Default</a> for <a class=\"struct\" href=\"fast_socks5/client/struct.Config.html\" title=\"struct fast_socks5::client::Config\">Config</a>",0],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/default/trait.Default.html\" title=\"trait core::default::Default\">Default</a> for <a class=\"struct\" href=\"fast_socks5/server/struct.AcceptAuthentication.html\" title=\"struct fast_socks5::server::AcceptAuthentication\">AcceptAuthentication</a>",0],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/default/trait.Default.html\" title=\"trait core::default::Default\">Default</a> for <a class=\"struct\" href=\"fast_socks5/server/struct.DenyAuthentication.html\" title=\"struct fast_socks5::server::DenyAuthentication\">DenyAuthentication</a>",0],["impl&lt;A: <a class=\"trait\" href=\"fast_socks5/server/trait.Authentication.html\" title=\"trait fast_socks5::server::Authentication\">Authentication</a>&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/default/trait.Default.html\" title=\"trait core::default::Default\">Default</a> for <a class=\"struct\" href=\"fast_socks5/server/struct.Config.html\" title=\"struct fast_socks5::server::Config\">Config</a>&lt;A&gt;",0]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":59,"fragment_lengths":[1390]}

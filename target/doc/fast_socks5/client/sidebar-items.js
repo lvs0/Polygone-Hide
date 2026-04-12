@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Config","Socks5Datagram","Socks5Stream"]};
