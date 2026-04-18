@@ -1,0 +1,21 @@
+[package]
+name = "polygone-hide"
+version = "0.1.0"
+edition = "2021"
+authors = ["l-vs (Hope)"]
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+fast-socks5 = "0.9"
+unicode-ident = "1.0.24"
+aes-gcm = "0.10"
+sharks = "0.5"
+rand = "0.8"
+zeroize = "1"
+aes-gcm = "0.10"
+sharks = "0.5"
+rand = "0.8"
+zeroize = "1"
