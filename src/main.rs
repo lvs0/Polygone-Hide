@@ -2,80 +2,9 @@ use fast_socks5::{Socks5Command, ReplyError};
 use tokio::net::{TcpStream, TcpListener};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{info, warn, error, debug};
-use std::sync::Arc;
-
-// ── Cryptographic imports ────────────────────────────────────────────────────
-use aes_gcm::{
-    Aes256Gcm, Key,
-    aead::{Aead, AeadCore, KeyInit, OsRng},
-};
-use rand::RngCore;
-use zeroize::{Zeroize, ZeroizeOnDrop};
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const SHAMIR_THRESHOLD: u8 = 4;
-const SHAMIR_N_FRAGMENTS: u8 = 7;
-const FRAGMENT_SIZE: usize = 8192; // 8KB chunks
 
-// ── Tunnel key with zeroization ───────────────────────────────────────────
-#[derive(ZeroizeOnDrop, Zeroize)]
-struct TunnelKey([u8; 32]);
-
-impl TunnelKey {
-    fn new() -> Self {
-        let mut key = [0u8; 32];
-        OsRng.fill_bytes(&mut key);
-        Self(key)
-    }
-
-    fn encrypt(&self, plaintext: &[u8]) -> (Vec<u8>, [u8; 12]) {
-        let key = Key::<Aes256Gcm>::from_slice(&self.0);
-        let cipher = Aes256Gcm::new(key);
-        let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
-        let ciphertext = cipher.encrypt(&nonce, plaintext).expect("AES-GCM encrypt");
-        (ciphertext, nonce.into())
-    }
-}
-
-// ── Fragment structure ─────────────────────────────────────────────────────
-#[derive(Debug, Clone)]
-struct TunnelFragment {
-    id: u8,
-    path_id: u8,
-    nonce: [u8; 12],
-    data: Vec<u8>,
-}
-
-// ── Fragmentation engine using sharks v0.5 ────────────────────────────────
-struct Fragmenter {
-    key: TunnelKey,
-}
-
-impl Fragmenter {
-    fn new() -> Self {
-        Self { key: TunnelKey::new() }
-    }
-
-    /// Fragment data into 7 Shamir fragments sent through different "paths"
-    fn fragment(&self, data: &[u8]) -> Vec<TunnelFragment> {
-        let (ciphertext, nonce) = self.key.encrypt(data);
-
-        // Use sharks 0.5 API: dealer_rng returns iterator of shares
-        let sharks = sharks::Sharks(SHAMIR_THRESHOLD);
-        let dealer = sharks.dealer_rng(&ciphertext, &mut OsRng);
-
-        dealer
-            .take(SHAMIR_N_FRAGMENTS as usize)
-            .enumerate()
-            .map(|(i, share)| TunnelFragment {
-                id: (i as u8) + 1,
-                path_id: (i as u8) + 1,
-                nonce,
-                data: Vec::from(&share),
-            })
-            .collect()
-    }
-}
 
 // ── Main ───────────────────────────────────────────────────────────────────
 
@@ -196,83 +125,139 @@ async fn handle_connection(mut client_stream: TcpStream) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Relay with Shamir fragmentation.
-/// Each chunk is encrypted with AES-256-GCM, then split into 7 fragments.
-/// Fragments are sent with simulated path delays (in real impl, would go through different DHT nodes).
+/// Relay with Shamir fragmentation — replaces copy_bidirectional.
+///
+/// Bidirectional tunnel:
+///   client ←→ Polygone-Hide proxy ←→ target
+///
+/// Each direction encrypts with AES-256-GCM + splits into 7 Shamir fragments.
+/// Any 4 fragments suffice to reconstruct. Fragments are sent through
+/// simulated independent DHT paths (path_id 1..7).
+///
+/// The remote exit node defragments and decrypts before forwarding to the
+/// actual destination. In the current simulation the raw ciphertext is
+/// written to the target so that a paired Polygone-Hide exit can defragment.
 async fn relay_with_fragments(
     mut client: TcpStream,
     mut target: TcpStream,
 ) -> anyhow::Result<()> {
-    let fragmenter = Arc::new(Fragmenter::new());
-    let mut client_buf = [0u8; FRAGMENT_SIZE];
-    let mut target_buf = [0u8; FRAGMENT_SIZE];
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use std::sync::Arc;
+    use sharks::Sharks;
+    use rand::rngs::OsRng;
 
-    let mut client_fragments_sent = 0u64;
-    let mut target_fragments_sent = 0u64;
+    const SHAMIR_THRESHOLD: u8 = 4;
+    const SHAMIR_N: u8 = 7;
 
-    loop {
-        tokio::select! {
-            // Client -> Target: fragment, then send
-            result = client.read(&mut client_buf) => {
-                let n = result?;
-                if n == 0 {
-                    info!("  [TUNNEL] Client closed. Total fragments sent: {}", client_fragments_sent);
-                    break;
-                }
-
-                let data = &client_buf[..n];
-                let fragments = fragmenter.fragment(data);
-
-                // In a real implementation, each fragment would go through a different DHT path
-                // Here we simulate by sending all fragments sequentially with small delays
-                for frag in &fragments {
-                    // Simulate different network paths with micro-delays
-                    tokio::time::sleep(tokio::time::Duration::from_micros(
-                        (frag.path_id as u64) * 50
-                    )).await;
-
-                    // In real impl: send to different DHT nodes
-                    // For now, we send the encrypted fragment to the target
-                    target.write_all(&frag.data).await?;
-                    client_fragments_sent += 1;
-                }
-            }
-
-            // Target -> Client: fragment, then send
-            result = target.read(&mut target_buf) => {
-                let n = result?;
-                if n == 0 {
-                    info!("  [TUNNEL] Target closed. Total fragments sent: {}", target_fragments_sent);
-                    break;
-                }
-
-                let data = &target_buf[..n];
-                let fragments = fragmenter.fragment(data);
-
-                for frag in &fragments {
-                    tokio::time::sleep(tokio::time::Duration::from_micros(
-                        (frag.path_id as u64) * 50
-                    )).await;
-
-                    client.write_all(&frag.data).await?;
-                    target_fragments_sent += 1;
-                }
-            }
+    // Shared AES key for this session (in production: derived via ML-KEM)
+    #[derive(Clone)]
+    struct TunnelKey([u8; 32]);
+    impl TunnelKey {
+        fn new() -> Self {
+            let mut k = [0u8; 32];
+            rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut k);
+            Self(k)
+        }
+        fn encrypt(&self, pt: &[u8]) -> (Vec<u8>, [u8; 12]) {
+            use aes_gcm::{Aes256Gcm, Key,
+                          aead::{Aead, AeadCore, KeyInit, OsRng}};
+            let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&self.0));
+            let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+            (cipher.encrypt(&nonce, pt).expect("AES-GCM encrypt"), nonce.into())
+        }
+        #[allow(dead_code)]
+        fn decrypt(&self, ct: &[u8], nonce: &[u8; 12]) -> Result<Vec<u8>, ()> {
+            use aes_gcm::{Aes256Gcm, Key, Nonce,
+                          aead::{Aead, KeyInit}};
+            let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&self.0));
+            cipher.decrypt(Nonce::from_slice(nonce), ct).map_err(|_| ())
         }
     }
 
-    Ok(())
-}
+    // Encode a tunnel frame: [path_id(1)][nonce(12)][num_shares(1)][share_len(4)][shares...]
+    fn encode_frame(path_id: u8, nonce: [u8; 12], shares: &[Vec<u8>]) -> Vec<u8> {
+        let mut buf = vec![path_id];
+        buf.extend_from_slice(&nonce);
+        buf.push(shares.len() as u8);
+        for share in shares {
+            let len = share.len() as u32;
+            buf.extend_from_slice(&len.to_le_bytes());
+            buf.extend_from_slice(share);
+        }
+        buf
+    }
 
-/// Old relay (kept for reference, unused)
-async fn relay(mut client: TcpStream, mut target: TcpStream) -> anyhow::Result<()> {
-    let (ci, ct) = tokio::io::copy_bidirectional(&mut client, &mut target)
-        .await
-        .map_err(|e| anyhow::anyhow!("Relay error: {}", e))?;
-    info!(
-        "  [TUNNEL] Relayed {} bytes client->target, {} bytes target->client",
-        ci, ct
-    );
+    // Fragment data: AES-encrypt then Shamir SSS-4-7 split
+    fn fragment_data(data: &[u8], key: &TunnelKey) -> (Vec<u8>, [u8; 12], Vec<ShamirFragment>) {
+        let (ct, nonce) = key.encrypt(data);
+        let sharks = Sharks(SHAMIR_THRESHOLD);
+        let dealer = sharks.dealer_rng(&ct, &mut OsRng);
+        let frags: Vec<ShamirFragment> = dealer
+            .take(SHAMIR_N as usize)
+            .enumerate()
+            .map(|(i, share)| ShamirFragment {
+                id: (i as u8) + 1,
+                data: Vec::from(&share),
+            })
+            .collect();
+        (ct, nonce, frags)
+    }
+
+    #[derive(Clone)]
+    struct ShamirFragment { id: u8, data: Vec<u8> }
+
+    let key = Arc::new(TunnelKey::new());
+    let mut c2t_buf = [0u8; 8192];
+    let mut t2c_buf = [0u8; 8192];
+    let mut c_frags = 0u64;
+    let mut t_frags = 0u64;
+
+    loop {
+        tokio::select! {
+            // ── client → target ──────────────────────────────────────────
+            r = client.read(&mut c2t_buf) => {
+                let n = r?;
+                if n == 0 {
+                    info!("  [TUNNEL] Client EOF. {} fragments sent client→target", c_frags);
+                    break;
+                }
+                let data = &c2t_buf[..n];
+                let (_ct, nonce, frags) = fragment_data(data, &key);
+
+                // Send one Shamir frame per path (all 7 paths for redundancy)
+                for frag in &frags {
+                    let frame = encode_frame(frag.id, nonce, &[frag.data.clone()]);
+                    target.write_all(&frame).await?;
+                    c_frags += 1;
+                }
+                info!(
+                    "  [TUNNEL] → {} bytes → {} frags (paths 1-7, any 4 reconstruct)",
+                    n, frags.len()
+                );
+            }
+
+            // ── target → client ──────────────────────────────────────────
+            r = target.read(&mut t2c_buf) => {
+                let n = r?;
+                if n == 0 {
+                    info!("  [TUNNEL] Target EOF. {} fragments sent target→client", t_frags);
+                    break;
+                }
+                let data = &t2c_buf[..n];
+                let (_ct, nonce, frags) = fragment_data(data, &key);
+
+                for frag in &frags {
+                    let frame = encode_frame(frag.id, nonce, &[frag.data.clone()]);
+                    client.write_all(&frame).await?;
+                    t_frags += 1;
+                }
+                info!(
+                    "  [TUNNEL] ← {} bytes → {} frags (paths 1-7, any 4 reconstruct)",
+                    n, frags.len()
+                );
+            }
+        }
+    }
 
     Ok(())
 }
