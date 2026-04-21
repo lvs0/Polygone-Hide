@@ -3,6 +3,9 @@ use tokio::net::{TcpStream, TcpListener};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{info, warn, error, debug};
 
+// Import Polygone's shared Shamir implementation
+use polygone::crypto::shamir::{self, Fragment as ShamirFragment};
+
 // ── Constants ────────────────────────────────────────────────────────────────
 
 
@@ -101,7 +104,7 @@ async fn handle_connection(mut client_stream: TcpStream) -> anyhow::Result<()> {
     match TcpStream::connect(&target_addr).await {
         Ok(target_stream) => {
             info!("  [POLYGONE] Connected to exit node for {target_addr}");
-            info!("  [POLYGONE] 🔐 Fragmenting traffic via Shamir SSS-4-7");
+            info!("  [POLYGONE] 🔐 Fragmenting traffic via Shamir SSS-4-7 (using shared Polygone crypto)");
 
             // Send success response
             client_stream
@@ -143,8 +146,6 @@ async fn relay_with_fragments(
 ) -> anyhow::Result<()> {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use std::sync::Arc;
-    use sharks::Sharks;
-    use rand::rngs::OsRng;
 
     const SHAMIR_THRESHOLD: u8 = 4;
     const SHAMIR_N: u8 = 7;
@@ -187,24 +188,13 @@ async fn relay_with_fragments(
         buf
     }
 
-    // Fragment data: AES-encrypt then Shamir SSS-4-7 split
-    fn fragment_data(data: &[u8], key: &TunnelKey) -> (Vec<u8>, [u8; 12], Vec<ShamirFragment>) {
+    // Fragment data: AES-encrypt then Shamir SSS-4-7 split using Polygone's shared library
+    fn fragment_data(data: &[u8], key: &TunnelKey) -> Result<(Vec<u8>, [u8; 12], Vec<ShamirFragment>), polygone::PolygoneError> {
         let (ct, nonce) = key.encrypt(data);
-        let sharks = Sharks(SHAMIR_THRESHOLD);
-        let dealer = sharks.dealer_rng(&ct, &mut OsRng);
-        let frags: Vec<ShamirFragment> = dealer
-            .take(SHAMIR_N as usize)
-            .enumerate()
-            .map(|(i, share)| ShamirFragment {
-                id: (i as u8) + 1,
-                data: Vec::from(&share),
-            })
-            .collect();
-        (ct, nonce, frags)
+        // Use the shared Polygone Shamir implementation
+        let frags = shamir::split(&ct, SHAMIR_THRESHOLD, SHAMIR_N)?;
+        Ok((ct, nonce, frags))
     }
-
-    #[derive(Clone)]
-    struct ShamirFragment { id: u8, data: Vec<u8> }
 
     let key = Arc::new(TunnelKey::new());
     let mut c2t_buf = [0u8; 8192];
@@ -222,11 +212,14 @@ async fn relay_with_fragments(
                     break;
                 }
                 let data = &c2t_buf[..n];
-                let (_ct, nonce, frags) = fragment_data(data, &key);
+                let Ok((_ct, nonce, frags)) = fragment_data(data, &key) else {
+                    error!("  [TUNNEL] Failed to fragment data");
+                    break;
+                };
 
                 // Send one Shamir frame per path (all 7 paths for redundancy)
                 for frag in &frags {
-                    let frame = encode_frame(frag.id, nonce, &[frag.data.clone()]);
+                    let frame = encode_frame(frag.id.0, nonce, &[frag.data.clone()]);
                     target.write_all(&frame).await?;
                     c_frags += 1;
                 }
@@ -244,10 +237,13 @@ async fn relay_with_fragments(
                     break;
                 }
                 let data = &t2c_buf[..n];
-                let (_ct, nonce, frags) = fragment_data(data, &key);
+                let Ok((_ct, nonce, frags)) = fragment_data(data, &key) else {
+                    error!("  [TUNNEL] Failed to fragment data");
+                    break;
+                };
 
                 for frag in &frags {
-                    let frame = encode_frame(frag.id, nonce, &[frag.data.clone()]);
+                    let frame = encode_frame(frag.id.0, nonce, &[frag.data.clone()]);
                     client.write_all(&frame).await?;
                     t_frags += 1;
                 }
