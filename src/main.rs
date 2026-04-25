@@ -220,6 +220,8 @@ async fn relay_with_fragments(
                 // Send one Shamir frame per path (all 7 paths for redundancy)
                 for frag in &frags {
                     let frame = encode_frame(frag.id.0, nonce, &[frag.data.clone()]);
+                    let len = frame.len() as u32;
+                    target.write_all(&len.to_be_bytes()).await?;
                     target.write_all(&frame).await?;
                     c_frags += 1;
                 }
@@ -244,6 +246,8 @@ async fn relay_with_fragments(
 
                 for frag in &frags {
                     let frame = encode_frame(frag.id.0, nonce, &[frag.data.clone()]);
+                    let len = frame.len() as u32;
+                    client.write_all(&len.to_be_bytes()).await?;
                     client.write_all(&frame).await?;
                     t_frags += 1;
                 }
